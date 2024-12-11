@@ -36,10 +36,9 @@ class User(AbstractUser):
         ('user', 'User')
     ]
     role = models.CharField(max_length=255, choices=ROLE_CHOICES, default='user')
+    phone_number = models.CharField(max_length=13, unique=True, blank=True, null=True)
     full_name = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(unique=True)
-    latitude = models.DecimalField(max_digits=10, decimal_places=8, blank=True, null=True)
-    longitude = models.DecimalField(max_digits=10, decimal_places=8, blank=True, null=True)
     first_name = None
     last_name = None
     username = None
@@ -74,8 +73,8 @@ class Author(models.Model):
     name = models.CharField(max_length=255, unique=True)
 
     class Meta:
-        verbose_name = 'Book'
-        verbose_name_plural = 'Books'
+        verbose_name = 'Author'
+        verbose_name_plural = 'Authors'
 
     def __str__(self):
         return self.name
@@ -109,7 +108,7 @@ class Basket(models.Model):
         verbose_name_plural = 'Baskets'
 
     def __str__(self):
-        return f"User - {self.user_id.name} Book - {self.book_id.name}"
+        return f"User - {self.user_id.email} Book - {self.book_id.name}"
 
 
 # ---------------------------------------------  Rental ------------------------------------------------------- #
@@ -126,7 +125,7 @@ class Rental(models.Model):
         verbose_name_plural = 'Rentals'
 
     def __str__(self):
-        return f"User - {self.user_id.name} Book - {self.book_id.name} Status - {self.status}"
+        return f"User - {self.user_id.email} Book - {self.book_id.name} Status - {self.status}"
 
 
 # ---------------------------------------------  Assessment ------------------------------------------------------- #
@@ -141,4 +140,4 @@ class Assessment(models.Model):
         verbose_name_plural = "Assessments"
 
     def __str__(self):
-        return f"{self.user_id.name} Book - {self.book_id.name} Rating - {self.rating}"
+        return f"{self.user_id.email} Book - {self.book_id.name} Rating - {self.rating}"
