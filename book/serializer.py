@@ -1,6 +1,6 @@
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, ValidationError
 
-from book.models import Book, Genre, Author, Basket
+from book.models import Book, Genre, Author, Basket, Assessment
 
 
 class BookSerializer(ModelSerializer):
@@ -67,3 +67,15 @@ class BasketSerializer(ModelSerializer):
             raise ValidationError("Siz bu kitobni allaqachon savatchaga qo'shgansiz.")
 
         return data
+
+
+class AssessmentSerializer(ModelSerializer):
+    book = SerializerMethodField()
+
+    class Meta:
+        model = Assessment
+        fields = ['user', 'book', 'rating', 'comment']
+        read_only_fields = ['user']
+
+    def get_book(self, obj):
+        return {"book": obj.book.name}

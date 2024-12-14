@@ -113,12 +113,21 @@ class Basket(models.Model):
 
 # ---------------------------------------------  Rental ------------------------------------------------------- #
 class Rental(models.Model):
+    STATUS_CHOICE = [
+        ('ijara', 'Ijara'),
+        ('qaytarilgan', 'Qaytarilgan'),
+        ('bron', 'Bron qilingan'),
+        ('bekor', 'Bekor qilingan'),
+
+    ]
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     book = models.ForeignKey(Book, on_delete=models.CASCADE)
     start_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField(auto_now=True)
     penalty = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    status = models.CharField(max_length=155, choices=[('ijara', 'qaytarilgan')], default='ijara')
+    status = models.CharField(max_length=155, choices=STATUS_CHOICE, default='bron')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'Rental'
