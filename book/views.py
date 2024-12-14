@@ -1,12 +1,16 @@
+from spwd import struct_spwd
+
 from rest_framework import status
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, RetrieveAPIView, CreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
 
 from book.models import Book, Genre, Author, Basket, Assessment, Rental
 from book.permissions import IsAmin
 from book.serializer import BookSerializer, GenreSerializer, GenreBookSerializer, AuthorSerializer, \
-    AuthorBookSerializer, BasketSerializer, AssessmentSerializer
+    AuthorBookSerializer, BasketSerializer, AssessmentSerializer, RentalPickupSerializer, RentalSerializer
 
 
 class BookCreateListAPIView(ListCreateAPIView):
@@ -91,3 +95,40 @@ class BookAssessmentAPIView(CreateAPIView):
             "data": response.data
         })
         return response
+
+
+class RentalCreateListAPIViews(CreateAPIView):
+    serializer_class = RentalSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Rental.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.context['request'] = request
+        serializer.is_valid(raise_exception=True)
+
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+
+class RentalPickupView(APIView):
+    def patch(self, request, pk, *args, **kwargs):
+        try:
+            rental = Rental.objects.get(pk=pk)
+        except Rental.DoesNotExist:
+            return Response({'error': 'Ijaraga olingan kitob topilmadi.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = RentalPickupSerializer(rental, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'message': 'Kitob ijaraga olindi',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

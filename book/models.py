@@ -1,6 +1,8 @@
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
+from django.db.models import Sum
+from django.utils.timezone import now
 
 
 class CustomUserManager(UserManager):
@@ -122,8 +124,8 @@ class Rental(models.Model):
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     book = models.ForeignKey(Book, on_delete=models.CASCADE)
-    start_date = models.DateTimeField(auto_now_add=True)
-    end_date = models.DateTimeField(auto_now=True)
+    start_date = models.DateTimeField(blank=True, null=True)
+    end_date = models.DateTimeField(blank=True, null=True)
     penalty = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     status = models.CharField(max_length=155, choices=STATUS_CHOICE, default='bron')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -132,6 +134,24 @@ class Rental(models.Model):
     class Meta:
         verbose_name = 'Rental'
         verbose_name_plural = 'Rentals'
+
+    def calculate_penalty(self):
+        """
+        Jarimani hisoblash: Agar end_date o'tgan bo'lsa, har bir ortiqcha kun uchun 1% jarima.
+        """
+        if now().date() > self.end_date:
+            overdue_days = (now().date() - self.end_date).days
+            daily_penalty = self.book.daily_price * 0.01
+            self.penalty += daily_penalty * overdue_days
+            self.save()
+
+    @staticmethod
+    def calculate_user_debt(user):
+        """
+        Mijozning umumiy qarzdorligini hisoblaydi.
+        """
+        debt = Rental.objects.filter(user=user, status='ijara').aggregate(total_penalty=Sum('penalty'))['total_penalty']
+        return debt or 0
 
     def __str__(self):
         return f"User - {self.user.email} Book - {self.book.name} Status - {self.status}"
