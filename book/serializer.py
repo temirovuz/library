@@ -1,6 +1,7 @@
 from datetime import timedelta
 
-from django.utils.timezone import now
+from django.utils import timezone
+from rest_framework.fields import IntegerField, DateTimeField
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, ValidationError
 
@@ -13,7 +14,7 @@ class BookSerializer(ModelSerializer):
 
     class Meta:
         model = Book
-        fields = ['name', 'description', 'author', 'genre', 'daily_price', 'available_copies', 'is_available']
+        fields = ['id', 'name', 'description', 'author', 'genre', 'daily_price', 'available_copies', 'is_available']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -86,65 +87,61 @@ class AssessmentSerializer(ModelSerializer):
 
 
 class RentalSerializer(ModelSerializer):
+    book = PrimaryKeyRelatedField(queryset=Book.objects.all())
+
     class Meta:
         model = Rental
-        fields = ['user', 'book']
-        read_only_fields = ['user', 'book']
+        fields = ['book', 'start_date', 'end_date', 'status', 'penalty']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['genre'] = instance.book.name
+        return representation
+
+
+class RentalCreateSerializer(ModelSerializer):
+    class Meta:
+        model = Rental
+        fields = ['book']
 
     def validate(self, data):
         user = self.context['request'].user
-        book = data.get('book')
-        if not book:
-            raise ValidationError({"book": "Kitob ma'lumotlarini kiritish majburiy."})
+        if not user.is_authenticated:
+            raise ValidationError("Foydalanuvchi autentifikatsiyadan o'tmagan")
 
-        # Check if the user already rented or reserved this book
-        if Rental.objects.filter(user=user, book=book, status__in=['bron', 'ijarada']).exists():
-            raise ValidationError("Siz ushbu kitobni allaqachon bron qilgansiz yoki ijaraga olgansiz.")
-
-        # Check if the user has debt
         if Rental.calculate_user_debt(user) > 0:
-            raise ValidationError("Sizda qarzdorlik bo'lgani uchun kitob bron qilolmaysiz yoki olib ketolmaysiz.")
+            raise ValidationError("Sizda qarzdorlik bo'lgani uchun kitob bron qilolmaysiz.")
 
-        # Check if there are available copies of the book
-        if book.available_copies <= 0:
-            raise ValidationError("Kitobning mavjud nusxalari qolmagan.")
+        if Rental.objects.filter(user=user, book=data['book']).exists():
+            raise ValidationError(f"'{data['book'].name}' kitobi allaqachon sizda ijarada.")
 
         return data
 
-    def create(self, validated_data):
-        user = self.context['request'].user
-        book = validated_data['book']
 
-        # Update book's available copies
-        book.available_copies -= 1
-        book.save()
+class RentalUpdateSerializer(ModelSerializer):
+    id = IntegerField(write_only=True)
+    start_date = DateTimeField(read_only=True)
+    end_date = IntegerField(write_only=True)
 
-        # Set additional fields
-        validated_data['user'] = user
-        validated_data['status'] = 'bron'
-        return super().create(validated_data)
-
-
-class RentalPickupSerializer(ModelSerializer):
     class Meta:
         model = Rental
-        fields = ['id', 'status']
+        fields = ['id', 'start_date', 'end_date']
+
+    def validate(self, data):
+        id = data.get('id')
+        if not Rental.objects.filter(id=id).exists():
+            raise ValidationError({'rental_id': 'Bunday buyurtma mavjud emas'})
+
+        end_date = data.get('end_date')
+        if not isinstance(end_date, int) or end_date <= 0:
+            raise ValidationError({'end_date': 'Tugash sanasi kamida 1 kun yoki 1 kundan kop bolishi kerak.'})
+
+        return data
 
     def update(self, instance, validated_data):
-        if Rental.calculate_user_debt(instance.user) > 0:
-            return ValidationError("Sizda qarzdorlik bolgani uchun kitob bron qila olmaysiz")
-
-        if instance.status != 'bron':
-            return ValidationError("Bu kitob bron qilinmagan")
-
-        instance.start_date = now()
-        rental_days = self.context['request'].data.get('rental_days')
-        if not rental_days or int(rental_days) <= 0:
-            raise ValidationError("Iltimos, to'g'ri ijaraga olish muddatini kiriting.")
-
-        rental_days = int(rental_days)
-        instance.end_date = instance.start_date + timedelta(days=rental_days)
-
+        instance.start_date = timezone.now()
+        days_to_add = validated_data.get('end_date')
+        instance.end_date = instance.start_date + timedelta(days=days_to_add)
         instance.status = 'ijara'
         instance.save()
         return instance
