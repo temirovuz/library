@@ -1,7 +1,10 @@
+from datetime import timedelta
+
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
 from django.db.models import Sum
+from django.utils import timezone
 from django.utils.timezone import now
 
 
@@ -143,6 +146,16 @@ class Rental(models.Model):
             overdue_days = (now().date() - self.end_date).days
             daily_penalty = self.book.daily_price * 0.01
             self.penalty += daily_penalty * overdue_days
+            self.save()
+
+    def cancel_bron(self):
+        """
+        Kitob bron qilingan va 24 soat ichida olib ketilmagan bo'lsa, bronni bekor qilish va kitob nusxasini oshirish.
+        """
+        if self.status == 'bron' and timezone.now() > self.start_date + timedelta(days=1):
+            self.status = 'bekor'  # Bron holatini bekor qilish
+            self.book.available_copies += 1  # Kitob nusxasini oshirish
+            self.book.save()
             self.save()
 
     @staticmethod
