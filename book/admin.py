@@ -66,6 +66,6 @@ class BasketAdmin(ModelAdmin):
 
 @admin.register(Rental)
 class RentalAdmin(ModelAdmin):
-    list_display = ['user_id', 'book_id', 'start_date', 'end_date', 'penalty', 'status']
+    list_display = ['user', 'book', 'start_date', 'end_date', 'penalty', 'status']
     search_fields = ['status']
     search_help_text = "Status bo'yicha qidirish"

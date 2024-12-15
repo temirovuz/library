@@ -1,16 +1,14 @@
-from spwd import struct_spwd
-
 from rest_framework import status
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, RetrieveAPIView, CreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.viewsets import ModelViewSet
 
 from book.models import Book, Genre, Author, Basket, Assessment, Rental
 from book.permissions import IsAmin
 from book.serializer import BookSerializer, GenreSerializer, GenreBookSerializer, AuthorSerializer, \
-    AuthorBookSerializer, BasketSerializer, AssessmentSerializer, RentalPickupSerializer, RentalSerializer
+    AuthorBookSerializer, BasketSerializer, AssessmentSerializer, RentalSerializer, RentalCreateSerializer, \
+    RentalUpdateSerializer
 
 
 class BookCreateListAPIView(ListCreateAPIView):
@@ -97,38 +95,70 @@ class BookAssessmentAPIView(CreateAPIView):
         return response
 
 
-class RentalCreateListAPIViews(CreateAPIView):
-    serializer_class = RentalSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return Rental.objects.filter(user=self.request.user)
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.context['request'] = request
-        serializer.is_valid(raise_exception=True)
-
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-    def perform_create(self, serializer):
-        serializer.save()
-
-
-class RentalPickupView(APIView):
-    def patch(self, request, pk, *args, **kwargs):
-        try:
-            rental = Rental.objects.get(pk=pk)
-        except Rental.DoesNotExist:
-            return Response({'error': 'Ijaraga olingan kitob topilmadi.'}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = RentalPickupSerializer(rental, data=request.data, partial=True, context={'request': request})
-        if serializer.is_valid():
-            serializer.save()
+class RentalCreateListAPIView(APIView):
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
             return Response({
-                'message': 'Kitob ijaraga olindi',
-                'data': serializer.data
-            }, status=status.HTTP_200_OK)
+                "error": "Foydalanuvchi autentifikatsiyadan o'tmagan"
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+        rentals = Rental.objects.filter(user=request.user).all()
+        serializer = RentalSerializer(rentals, many=True)
+        return Response({"books": serializer.data}, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        if not user.is_authenticated:
+            return Response({
+                "error": "Foydalanuvchi autentifikatsiyadan o'tmagan"
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Basketdagi barcha kitoblarni olish
+        basket_items = Basket.objects.filter(user=user).all()
+        if not basket_items.exists():
+            return Response({
+                "error": "Savat bo'sh."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        rentals = []
+        for item in basket_items:
+            serializer = RentalCreateSerializer(data={"book": item.book.id}, context={"request": request})
+            serializer.is_valid(raise_exception=True)
+            rental = serializer.save(user=user)
+            rentals.append(rental)
+
+        # Savatni tozalash
+        basket_items.delete()
+
+        response_serializer = RentalSerializer(rentals, many=True)
+        return Response({"message": "Savatdagi kitoblar bron qilindi.", "rentals": response_serializer.data},
+                        status=status.HTTP_201_CREATED)
+
+
+class RentalUpdateAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = RentalUpdateSerializer(data=request.data)
+
+        if serializer.is_valid():
+            rental_id = serializer.validated_data.get('rental_id')
+            try:
+                # Rental obyektini olish
+                rental = Rental.objects.get(id=rental_id)
+
+                # Ma'lumotlarni yangilash
+                serializer.update(rental, serializer.validated_data)
+
+                return Response({
+                    'message': 'Rental updated successfully.',
+                    'data': {
+                        'rental_id': rental.id,
+                        'start_date': rental.start_date,
+                        'end_date': rental.end_date,
+                        'status': rental.status,
+                    }
+                }, status=status.HTTP_200_OK)
+
+            except Rental.DoesNotExist:
+                return Response({'error': 'Rental not found.'}, status=status.HTTP_404_NOT_FOUND)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
