@@ -95,7 +95,7 @@ class RentalSerializer(ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation['genre'] = instance.book.name
+        representation['book'] = instance.book.name
         return representation
 
 
@@ -146,6 +146,31 @@ class RentalUpdateSerializer(ModelSerializer):
         instance.save()
         return instance
 
+
+class RentalListSerializer(ModelSerializer):
+    book = PrimaryKeyRelatedField(queryset=Book.objects.all())
+
+    class Meta:
+        model = Rental
+        fields = ['book', 'status']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['book'] = instance.book.name
+        return representation
+
+class RentalDetailSerializer(ModelSerializer):
+    book = PrimaryKeyRelatedField(queryset=Book.objects.all())
+
+    class Meta:
+        model = Rental
+        fields = ['book', 'start_date', 'end_date', "penalty", 'status']
+
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['book'] = instance.book.name
+        return representation
 
 
 class SearchSerializer(ModelSerializer):
