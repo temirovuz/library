@@ -2,7 +2,7 @@ from django.urls import path
 
 from book.views import BookCreateListAPIView, BookDetailAPIView, GenreCreateListAPIView, GenreBooksListAPIView, \
     AuthorCreateListAPIVew, AuthorBooksListAPIView, BasketCreateListAPIView, RentalCreateListAPIView, \
-    RentalUpdateAPIView
+    RentalUpdateAPIView, SearchAPIView
 
 urlpatterns = [
     # Books
@@ -22,5 +22,8 @@ urlpatterns = [
 
     # rental
     path('bron/', RentalCreateListAPIView.as_view(), name='bron'),
-    path('take-away/', RentalUpdateAPIView.as_view(), name='take-away')
+    path('take-away/', RentalUpdateAPIView.as_view(), name='take-away'),
+
+    # search
+    path('search/', SearchAPIView.as_view(), name='search')
 ]

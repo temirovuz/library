@@ -145,3 +145,13 @@ class RentalUpdateSerializer(ModelSerializer):
         instance.status = 'ijara'
         instance.save()
         return instance
+
+
+
+class SearchSerializer(ModelSerializer):
+    author = AuthorSerializer()
+    genre = GenreSerializer()
+
+    class Meta:
+        model = Book
+        fields = ['name', 'author', 'genre', 'available_copies']
