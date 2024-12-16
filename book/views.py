@@ -14,7 +14,7 @@ from book.models import Book, Genre, Author, Basket, Assessment, Rental
 from book.permissions import IsAmin
 from book.serializer import BookSerializer, GenreSerializer, GenreBookSerializer, AuthorSerializer, \
     AuthorBookSerializer, BasketSerializer, AssessmentSerializer, RentalSerializer, RentalCreateSerializer, \
-    RentalUpdateSerializer, RentalListSerializer, RentalDetailSerializer
+    RentalUpdateSerializer, RentalListSerializer, RentalDetailSerializer,BookReviewsSerializer
 
 
 class BookCreateListAPIView(ListCreateAPIView):
@@ -101,7 +101,16 @@ class BookAssessmentAPIView(CreateAPIView):
         return response
 
 
+class BookReviewsList(ListAPIView):
+    queryset = Assessment.objects.all()
+    permission_classes = [IsAuthenticated]
+    serializer_class = BookReviewsSerializer
+
+
+# --------------------------------------------------------------------------------------------------------------- #
 class RentalCreateListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return Response({
@@ -142,13 +151,14 @@ class RentalCreateListAPIView(APIView):
 
 
 class RentalUpdateAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsAmin]
+
     def post(self, request, *args, **kwargs):
         serializer = RentalUpdateSerializer(data=request.data)
 
         if serializer.is_valid():
             rental_id = serializer.validated_data.get('rental_id')
             try:
-                # Rental obyektini olish
                 rental = Rental.objects.get(id=rental_id)
 
                 # Ma'lumotlarni yangilash
@@ -202,6 +212,8 @@ def clean_query(query):
 
 
 class SearchAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def perform_search(self, query):
         cleaned_query = clean_query(query)
         cache_key = f"book_search_{cleaned_query}"
