@@ -1,8 +1,14 @@
+import re
+from unidecode import unidecode
+
 from rest_framework import status
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, RetrieveAPIView, CreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from django.core.cache import cache
+from django.db.models import Q
 
 from book.models import Book, Genre, Author, Basket, Assessment, Rental
 from book.permissions import IsAmin
@@ -162,3 +168,44 @@ class RentalUpdateAPIView(APIView):
                 return Response({'error': 'Rental not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+def clean_query(query):
+    query = query.replace("'", "")
+    query = re.sub(r"[^a-zA-Z0-9\s]", "", query)
+    return query.strip().lower()
+
+
+class SearchAPIView(APIView):
+    def perform_search(self, query):
+        cleaned_query = clean_query(query)
+        cache_key = f"book_search_{cleaned_query}"
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            return cached_data
+
+        books = Book.objects.filter(
+            Q(name__icontains=cleaned_query) |
+            Q(author__name__icontains=cleaned_query) |
+            Q(genre__name__icontains=cleaned_query)
+        )
+        serializer = BookSerializer(books, many=True)
+        cache.set(cache_key, serializer.data, timeout=300)
+        return serializer.data
+
+    def get(self, request):
+        query = request.query_params.get("search", None)
+        if not query:
+            return Response({"error": "Biror nom kiriting"}, status=status.HTTP_400_BAD_REQUEST)
+
+        result = self.perform_search(query)
+        return Response(result, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        query = request.data.get("search", None)
+        if not query:
+            return Response({"error": "Biror nom kiriting"}, status=status.HTTP_400_BAD_REQUEST)
+
+        result = self.perform_search(query)
+        return Response(result, status=status.HTTP_200_OK)
