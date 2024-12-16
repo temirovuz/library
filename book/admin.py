@@ -40,22 +40,22 @@ class UserAdmin(UserAdmin):
 
 @admin.register(Author)
 class AuthorAdmin(ModelAdmin):
-    list_display = ['name']
-    search_fields = ['name']
+    list_display = ['name', 'cleaned_name']
+    search_fields = ['name', 'cleaned_name']
     search_help_text = "Nom bo'yicha qidirish"
 
 
 @admin.register(Genre)
 class GenreAdmin(ModelAdmin):
-    list_display = ['name']
-    search_fields = ['name']
+    list_display = ['name', 'cleaned_name']
+    search_fields = ['name', 'cleaned_name']
     search_help_text = "Nom bo'yicha qidirish"
 
 
 @admin.register(Book)
 class BookAdmin(ModelAdmin):
-    list_display = ['name', 'author', 'genre_id', 'daily_price', 'available_copies', 'is_available']
-    search_fields = ['name', 'author', 'genre_id']
+    list_display = ['name','cleaned_name', 'author', 'genre_id', 'daily_price', 'available_copies', 'is_available']
+    search_fields = ['name', 'cleaned_name', 'author', 'genre_id']
     search_help_text = "Nom, author, genre bo'yicha qidirish"
 
 
