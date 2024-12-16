@@ -1,8 +1,8 @@
 import re
-from unidecode import unidecode
 
 from rest_framework import status
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, RetrieveAPIView, CreateAPIView
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, RetrieveAPIView, CreateAPIView, \
+    ListAPIView, RetrieveDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -14,7 +14,7 @@ from book.models import Book, Genre, Author, Basket, Assessment, Rental
 from book.permissions import IsAmin
 from book.serializer import BookSerializer, GenreSerializer, GenreBookSerializer, AuthorSerializer, \
     AuthorBookSerializer, BasketSerializer, AssessmentSerializer, RentalSerializer, RentalCreateSerializer, \
-    RentalUpdateSerializer
+    RentalUpdateSerializer, RentalListSerializer, RentalDetailSerializer
 
 
 class BookCreateListAPIView(ListCreateAPIView):
@@ -168,6 +168,31 @@ class RentalUpdateAPIView(APIView):
                 return Response({'error': 'Rental not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RentalListAPIView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = RentalListSerializer
+
+    def get_queryset(self):
+        return Rental.objects.filter(user=self.request.user, status__in=['bron', 'ijara'])
+
+
+class RentalDetailAPIView(RetrieveDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = RentalDetailSerializer
+
+    def get_queryset(self):
+        return Rental.objects.filter(user=self.request.user, status__in=['bron', 'ijara'])
+
+    def perform_destroy(self, instance):
+        if instance.status == 'bron':
+            instance.status = 'bekor'
+            instance.book.available_copies += 1
+            instance.book.save()
+            instance.save()
+            return Response({'detail': 'Bron bekor qilindi.'}, status=status.HTTP_204_NO_CONTENT)
+        return Response({'detail': 'Faqat bron qilingan kitobni o‘chirish mumkin.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 def clean_query(query):
