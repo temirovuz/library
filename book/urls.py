@@ -6,7 +6,7 @@ from django.urls import path
 
 from book.views import BookCreateListAPIView, BookDetailAPIView, GenreCreateListAPIView, GenreBooksListAPIView, \
     AuthorCreateListAPIVew, AuthorBooksListAPIView, BasketCreateListAPIView, RentalCreateListAPIView, \
-    RentalUpdateAPIView, SearchAPIView, RentalListAPIView, RentalDetailAPIView
+    RentalUpdateAPIView, SearchAPIView, RentalListAPIView, RentalDetailAPIView, BookReviewsList, BookAssessmentAPIView
 
 urlpatterns = [
     # Books
@@ -31,5 +31,9 @@ urlpatterns = [
     path('rental/<int:pk>', RentalDetailAPIView.as_view(), name='rentals'),
 
     # search
-    path('search/', SearchAPIView.as_view(), name='search')
+    path('search/', SearchAPIView.as_view(), name='search'),
+
+    # rating
+    path('rating/<int:pk>', BookReviewsList.as_view(), name='rating'),
+    path('rating-add/', BookAssessmentAPIView.as_view(), name='rating-add')
 ]

@@ -8,6 +8,8 @@ from rest_framework.serializers import ModelSerializer, SerializerMethodField, V
 from book.models import Book, Genre, Author, Basket, Assessment, Rental, User
 
 
+# -------------------------------------------------------------------------------------------------------------- #
+
 class BookSerializer(ModelSerializer):
     author = PrimaryKeyRelatedField(queryset=Author.objects.all())
     genre = PrimaryKeyRelatedField(queryset=Genre.objects.all())
@@ -22,6 +24,8 @@ class BookSerializer(ModelSerializer):
         representation['genre'] = instance.genre.name
         return representation
 
+
+# -------------------------------------------------------------------------------------------------------------- #
 
 class GenreSerializer(ModelSerializer):
     class Meta:
@@ -41,6 +45,8 @@ class GenreBookSerializer(ModelSerializer):
         return BookSerializer(books, many=True).data
 
 
+# -------------------------------------------------------------------------------------------------------------- #
+
 class AuthorSerializer(ModelSerializer):
     class Meta:
         model = Author
@@ -59,6 +65,8 @@ class AuthorBookSerializer(ModelSerializer):
         return BookSerializer(books, many=True).data
 
 
+# -------------------------------------------------------------------------------------------------------------- #
+
 class BasketSerializer(ModelSerializer):
     class Meta:
         model = Basket
@@ -74,6 +82,8 @@ class BasketSerializer(ModelSerializer):
         return data
 
 
+# -------------------------------------------------------------------------------------------------------------- #
+
 class AssessmentSerializer(ModelSerializer):
     book = SerializerMethodField()
 
@@ -85,6 +95,25 @@ class AssessmentSerializer(ModelSerializer):
     def get_book(self, obj):
         return {"book": obj.book.name}
 
+
+class BookReviewsSerializer(ModelSerializer):
+    book = PrimaryKeyRelatedField(queryset=Book.objects.all())
+    all = SerializerMethodField()
+
+    class Meta:
+        model = Assessment
+        fields = ['book', 'rating', 'comment', 'all']
+
+    def get_all(self, obj):
+        alls = Assessment.objects.filter(book_id=obj)
+        return AssessmentSerializer(alls, many=True).data
+
+    def to_representation(self, instance):
+        representation = uper().to_representation(instance)
+        representation['book'] = instance.book.name
+
+
+# -------------------------------------------------------------------------------------------------------------- #
 
 class RentalSerializer(ModelSerializer):
     book = PrimaryKeyRelatedField(queryset=Book.objects.all())
@@ -159,6 +188,7 @@ class RentalListSerializer(ModelSerializer):
         representation['book'] = instance.book.name
         return representation
 
+
 class RentalDetailSerializer(ModelSerializer):
     book = PrimaryKeyRelatedField(queryset=Book.objects.all())
 
@@ -166,12 +196,13 @@ class RentalDetailSerializer(ModelSerializer):
         model = Rental
         fields = ['book', 'start_date', 'end_date', "penalty", 'status']
 
-
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['book'] = instance.book.name
         return representation
 
+
+# -------------------------------------------------------------------------------------------------------------- #
 
 class SearchSerializer(ModelSerializer):
     author = AuthorSerializer()

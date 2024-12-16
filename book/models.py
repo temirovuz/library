@@ -155,9 +155,6 @@ class Rental(models.Model):
         verbose_name_plural = 'Rentals'
 
     def calculate_penalty(self):
-        """
-        Jarimani hisoblash: Agar end_date o'tgan bo'lsa, har bir ortiqcha kun uchun 1% jarima.
-        """
         if now().date() > self.end_date:
             overdue_days = (now().date() - self.end_date).days
             daily_penalty = self.book.daily_price * 0.01
