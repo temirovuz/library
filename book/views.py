@@ -186,9 +186,9 @@ class SearchAPIView(APIView):
             return cached_data
 
         books = Book.objects.filter(
-            Q(name__icontains=cleaned_query) |
-            Q(author__name__icontains=cleaned_query) |
-            Q(genre__name__icontains=cleaned_query)
+            Q(cleaned_name__icontains=cleaned_query) |
+            Q(author__cleaned_name__icontains=cleaned_query) |
+            Q(genre__cleaned_name__icontains=cleaned_query)
         )
         serializer = BookSerializer(books, many=True)
         cache.set(cache_key, serializer.data, timeout=300)

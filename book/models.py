@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 
 from django.contrib.auth.hashers import make_password
@@ -64,10 +65,15 @@ class User(AbstractUser):
 # ---------------------------------------------  Genre ------------------------------------------------------- #
 class Genre(models.Model):
     name = models.CharField(max_length=255, unique=True)
+    cleaned_name = models.CharField(max_length=255, blank=True)
 
     class Meta:
         verbose_name = 'Genre'
         verbose_name_plural = 'Genres'
+
+    def save(self, *args, **kwargs):
+        self.cleaned_name = re.sub(r"[^a-zA-Z0-9\s]", "", self.name).lower().strip()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -76,10 +82,15 @@ class Genre(models.Model):
 # ---------------------------------------------  Author ------------------------------------------------------- #
 class Author(models.Model):
     name = models.CharField(max_length=255, unique=True)
+    cleaned_name = models.CharField(max_length=255, blank=True)
 
     class Meta:
         verbose_name = 'Author'
         verbose_name_plural = 'Authors'
+
+    def save(self, *args, **kwargs):
+        self.cleaned_name = re.sub(r"[^a-zA-Z0-9\s]", "", self.name).lower().strip()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -88,12 +99,17 @@ class Author(models.Model):
 # ---------------------------------------------  Book ------------------------------------------------------- #
 class Book(models.Model):
     name = models.CharField(max_length=255)
+    cleaned_name = models.CharField(max_length=255,  blank=True)
     description = models.TextField()
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
     daily_price = models.DecimalField(max_digits=10, decimal_places=2)
     available_copies = models.PositiveIntegerField()
     is_available = models.BooleanField(default=True)
+
+    def save(self, *args, **kwargs):
+        self.cleaned_name = re.sub(r"[^a-zA-Z0-9\s]", "", self.name).lower().strip()
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Book'
@@ -149,20 +165,14 @@ class Rental(models.Model):
             self.save()
 
     def cancel_bron(self):
-        """
-        Kitob bron qilingan va 24 soat ichida olib ketilmagan bo'lsa, bronni bekor qilish va kitob nusxasini oshirish.
-        """
-        if self.status == 'bron' and timezone.now() > self.start_date + timedelta(days=1):
-            self.status = 'bekor'  # Bron holatini bekor qilish
-            self.book.available_copies += 1  # Kitob nusxasini oshirish
+        if self.status == 'bron' and timezone.now() > self.created_at + timedelta(days=1):
+            self.status = 'bekor'
+            self.book.available_copies += 1
             self.book.save()
             self.save()
 
     @staticmethod
     def calculate_user_debt(user):
-        """
-        Mijozning umumiy qarzdorligini hisoblaydi.
-        """
         debt = Rental.objects.filter(user=user, status='ijara').aggregate(total_penalty=Sum('penalty'))['total_penalty']
         return debt or 0
 
